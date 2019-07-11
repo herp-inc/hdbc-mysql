@@ -50,6 +50,7 @@ data MySQLConnectInfo = MySQLConnectInfo
     , mysqlUnixSocket :: String
       -- | The group name in my.cnf from which it reads options; e.g., @\"test\"@
     , mysqlGroup      :: Maybe String
+    , mysqlCharset    :: Maybe String
     }
 
 {- | Typical connection information, meant to be overridden partially,
@@ -63,7 +64,7 @@ data MySQLConnectInfo = MySQLConnectInfo
 
 -}
 defaultMySQLConnectInfo :: MySQLConnectInfo
-defaultMySQLConnectInfo = MySQLConnectInfo "127.0.0.1" "root" "" "test" 3306 "" Nothing
+defaultMySQLConnectInfo = MySQLConnectInfo "127.0.0.1" "root" "" "test" 3306 "" Nothing Nothing
 
 data Connection = Connection
     { disconnect :: IO ()
@@ -115,7 +116,7 @@ connectMySQL info = do
                       _ <- mysql_options mysql_ #{const MYSQL_READ_DEFAULT_GROUP} (castPtr group_)
                       return ()
     Nothing -> return ()
-  withCString (mysqlHost info) $ \host_ ->
+  mysql <- withCString (mysqlHost info) $ \host_ ->
       withCString (mysqlUser info) $ \user_ ->
           withCString (mysqlPassword info) $ \passwd_ ->
               withCString (mysqlDatabase info) $ \db_ ->
@@ -125,6 +126,11 @@ connectMySQL info = do
                                                   unixSocket_
                          when (rv == nullPtr) (connectionError mysql_)
                          wrap mysql_
+  forM_ (mysqlCharset info) $ \charset ->
+    withCString charset $ \charset_ -> do
+      _ <- mysql_set_character_set mysql_ (castPtr charset_)
+      return ()
+  return mysql
     where
       -- Returns the HDBC wrapper for the native MySQL connection
       -- object.
@@ -433,7 +439,7 @@ bindOfSqlValue (Types.SqlWord64 n) = do
 bindOfSqlValue (Types.SqlEpochTime epoch) =
   bindOfSqlValue (Types.SqlUTCTime t)
     where t = posixSecondsToUTCTime (fromIntegral epoch)
-                                            
+
 bindOfSqlValue (Types.SqlUTCTime utct) = do
   let t = utcToMysqlTime utct
   buf_ <- new t
@@ -839,6 +845,13 @@ mysql_options =
 #endif
     mysql_options_
 
+mysql_set_character_set :: Ptr MYSQL -> Ptr () -> IO CInt
+mysql_set_character_set =
+#if DEBUG
+  trace "mysql_set_character_set"
+#endif
+    mysql_set_character_set_
+
 mysql_real_connect :: Ptr MYSQL -> CString -> CString -> CString -> CString -> CInt -> CString -> IO (Ptr MYSQL)
 mysql_real_connect =
 #if DEBUG
@@ -1004,6 +1017,11 @@ foreign import ccall unsafe "mysql_init" mysql_init_
 foreign import ccall unsafe "mysql_options" mysql_options_
  :: Ptr MYSQL
  -> CInt
+ -> Ptr ()
+ -> IO CInt
+
+foreign import ccall unsafe "mysql_set_character_set" mysql_set_character_set_
+ :: Ptr MYSQL
  -> Ptr ()
  -> IO CInt
 
