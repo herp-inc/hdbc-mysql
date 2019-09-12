@@ -657,6 +657,11 @@ nonNullCellValue #{const MYSQL_TYPE_NEWDATE} p _ _ = do
   let date = fromGregorian (fromIntegral y) (fromIntegral m) (fromIntegral d)
   return $ Types.SqlLocalDate date
 
+#if defined(MYSQL_TYPE_JSON)
+nonNullCellValue #{const MYSQL_TYPE_JSON} p len _ =
+    B.packCStringLen ((castPtr p), fromIntegral len) >>= return . Types.SqlByteString
+#endif
+
 nonNullCellValue t _ _ _ = return $ Types.SqlString ("unknown type " ++ show t)
 
 -- Cough up the column metadata for a field that's returned from a
@@ -701,6 +706,9 @@ typeIdOf #{const MYSQL_TYPE_BLOB}        = ColTypes.SqlBinaryT
 typeIdOf #{const MYSQL_TYPE_VAR_STRING}  = ColTypes.SqlVarCharT
 typeIdOf #{const MYSQL_TYPE_STRING}      = ColTypes.SqlCharT
 typeIdOf #{const MYSQL_TYPE_GEOMETRY}    = ColTypes.SqlUnknownT "GEOMETRY"
+#if defined(MYSQL_TYPE_JSON)
+typeIdOf #{const MYSQL_TYPE_JSON}        = ColTypes.SqlUnknownT "JSON"
+#endif
 typeIdOf n                               = ColTypes.SqlUnknownT ("unknown type " ++ show n)
 
 -- Run a query and discard the results, if any.
