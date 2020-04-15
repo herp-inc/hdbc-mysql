@@ -35,7 +35,8 @@ mysqlConfigProgram = (simpleProgram "mysql_config") {
 
 mysqlBuildInfo :: LocalBuildInfo -> IO BuildInfo
 mysqlBuildInfo lbi = do
-  let mysqlConfig = rawSystemProgramStdoutConf verbosity mysqlConfigProgram (withPrograms lbi)
+  let (Just configuredProgram) = lookupProgram mysqlConfigProgram (withPrograms lbi)
+      mysqlConfig = getProgramOutput verbosity configuredProgram
       ws = " \n\r\t"
 
   includeDirs <- return . map (drop 2) . split ws =<< mysqlConfig ["--include"]
