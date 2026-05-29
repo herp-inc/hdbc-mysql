@@ -97,7 +97,7 @@ from the configuration data, rather than be hard-coded.
 
 ```
 # Nix shell
-nix-shell -p haskell.packages.ghc801.ghc gcc mysql57 pkgconfig zlib openssl haskellPackages.haddock
+nix-shell -p haskell.packages.ghc801.ghc gcc mysql80 pkgconfig zstd.dev openssl haskellPackages.haddock
 
 # Use Cabal to build
 cabal clean && cabal build

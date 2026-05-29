@@ -5,4 +5,4 @@ packages:
 
 nix:
   enable: true
-  packages: [ mysql.connector-c openssl zlib ]
+  packages: [ mysql.connector-c openssl zstd.dev ]
