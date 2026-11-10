@@ -10,7 +10,7 @@ import Distribution.Simple.Program
 import Distribution.Verbosity
 
 import Data.Char (isSpace)
-import Data.List (dropWhile,span)
+import Data.List (dropWhile,isPrefixOf,span)
 
 import Control.Monad
 
@@ -42,9 +42,12 @@ mysqlBuildInfo lbi = do
   includeDirs <- return . map (drop 2) . split ws =<< mysqlConfig ["--include"]
   ldOptions   <- return . split ws =<< mysqlConfig ["--libs"]
 
+  -- ld-options only reach the linker. Register the library directories too so that
+  -- GHC's runtime linker (TemplateHaskell, GHCi) can find the extra-libraries.
   return emptyBuildInfo {
-    ldOptions   = ldOptions,
-    includeDirs = includeDirs
+    ldOptions    = ldOptions,
+    extraLibDirs = [drop 2 o | o <- ldOptions, "-L" `isPrefixOf` o],
+    includeDirs  = includeDirs
   }
   where
     verbosity = normal -- honestly, this is a hack
